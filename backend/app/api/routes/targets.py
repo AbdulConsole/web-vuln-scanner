@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.database import get_db
+from app.database.repositories.target_repository import TargetRepository
 from app.schemas.target import TargetCreate, TargetRead, TargetUpdate
 from app.services.target_service import TargetService
 
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/targets", tags=["targets"])
 
 
 def _get_service(session: AsyncSession = Depends(get_db)) -> TargetService:
-    return TargetService(session)
+    return TargetService(TargetRepository(session))
 
 
 @router.get("", response_model=list[TargetRead])

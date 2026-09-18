@@ -31,6 +31,8 @@ async def lifespan(app: FastAPI):
         "Starting application",
         extra={"context": {"environment": settings.ENVIRONMENT}},
     )
+    from app.database.database import init_models
+    await init_models()
     yield
     logger.info("Shutting down application")
 
