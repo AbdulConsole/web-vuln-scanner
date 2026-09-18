@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast';
 export default function Findings() {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedFinding, setSelectedFinding] = useState<FindingDetail | null>(null);
@@ -58,13 +59,50 @@ export default function Findings() {
     }
   };
 
+  const filteredFindings = findings.filter(f => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      f.title.toLowerCase().includes(q) ||
+      f.url.toLowerCase().includes(q) ||
+      f.detector_name.toLowerCase().includes(q) ||
+      f.vulnerability_type.toLowerCase().includes(q) ||
+      (f.parameter && f.parameter.toLowerCase().includes(q))
+    );
+  });
+
   if (loading && findings.length === 0) return <Spinner />;
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Findings</h1>
 
-      <div className="flex gap-4 mb-6">
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex-1">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search findings by title, URL, detector, or parameter..."
+              className="w-full pl-10 pr-4 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                &times;
+              </button>
+            )}
+          </div>
+        </div>
         <select
           value={severityFilter}
           onChange={e => setSeverityFilter(e.target.value)}
@@ -91,12 +129,26 @@ export default function Findings() {
         </select>
       </div>
 
+      {/* Results count */}
+      {(searchQuery || severityFilter || statusFilter) && (
+        <div className="text-sm text-gray-500 mb-4">
+          Showing {filteredFindings.length} of {findings.length} findings
+          {searchQuery && <span> matching "<strong>{searchQuery}</strong>"</span>}
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {findings.length === 0 && !loading ? (
           <EmptyState
             icon="🛡️"
             title="No findings"
             description={severityFilter || statusFilter ? 'Try adjusting your filters' : 'Run a scan to discover vulnerabilities'}
+          />
+        ) : filteredFindings.length === 0 ? (
+          <EmptyState
+            icon="🔍"
+            title="No matching findings"
+            description="Try adjusting your search or filters"
           />
         ) : (
           <table className="w-full text-sm">
@@ -112,7 +164,7 @@ export default function Findings() {
               </tr>
             </thead>
             <tbody>
-              {findings.map(f => (
+              {filteredFindings.map(f => (
                 <tr key={f.id} className="border-t hover:bg-gray-50">
                   <td className="px-4 py-2">{f.priority_rank || '-'}</td>
                   <td className="px-4 py-2"><SeverityBadge severity={f.severity} /></td>
@@ -137,6 +189,7 @@ export default function Findings() {
         )}
       </div>
 
+      {/* Finding Detail Modal */}
       {selectedFinding && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"

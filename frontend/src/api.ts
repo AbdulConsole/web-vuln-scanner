@@ -32,6 +32,7 @@ export interface Scan {
   finished_at: string | null;
   urls_crawled: number;
   requests_sent: number;
+  duration_seconds: number | null;
   error: string | null;
   created_at: string;
   updated_at: string;

@@ -25,6 +25,7 @@ class ScanRead(BaseModel):
     finished_at: datetime | None = None
     urls_crawled: int = 0
     requests_sent: int = 0
+    duration_seconds: float | None = None
     error: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -41,6 +42,7 @@ class ScanRead(BaseModel):
             finished_at=scan.finished_at,
             urls_crawled=scan.urls_crawled,
             requests_sent=scan.requests_sent,
+            duration_seconds=scan.duration_seconds,
             error=scan.error,
             created_at=scan.created_at,
             updated_at=scan.updated_at,

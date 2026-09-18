@@ -9,6 +9,7 @@ export default function Targets() {
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editTarget, setEditTarget] = useState<Target | null>(null);
   const [form, setForm] = useState({ name: '', base_url: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -26,13 +27,18 @@ export default function Targets() {
 
   useEffect(() => { load(); }, []);
 
+  const resetForm = () => {
+    setForm({ name: '', base_url: '' });
+    setError('');
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     try {
       await api.createTarget(form);
       setShowCreate(false);
-      setForm({ name: '', base_url: '' });
+      resetForm();
       addToast('Target created successfully', 'success');
       load();
     } catch (err: any) {
@@ -40,6 +46,30 @@ export default function Targets() {
       setError(msg);
       addToast(msg, 'error');
     }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    setError('');
+    try {
+      await api.updateTarget(editTarget.id, { name: form.name });
+      setEditTarget(null);
+      resetForm();
+      addToast('Target updated', 'success');
+      load();
+    } catch (err: any) {
+      const msg = err.message || 'Failed to update target';
+      setError(msg);
+      addToast(msg, 'error');
+    }
+  };
+
+  const openEdit = (target: Target) => {
+    setEditTarget(target);
+    setForm({ name: target.name, base_url: target.base_url });
+    setShowCreate(false);
+    setError('');
   };
 
   const handleDelete = async () => {
@@ -62,7 +92,7 @@ export default function Targets() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Targets</h1>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => { setShowCreate(true); setEditTarget(null); resetForm(); }}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           + New Target
@@ -99,7 +129,44 @@ export default function Targets() {
               <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                 Create
               </button>
-              <button type="button" onClick={() => setShowCreate(false)} className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">
+              <button type="button" onClick={() => { setShowCreate(false); resetForm(); }} className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editTarget && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6 animate-fade-in">
+          <h2 className="text-lg font-semibold mb-4">Edit Target</h2>
+          {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Name</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                className="mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Base URL</label>
+              <input
+                type="url"
+                value={form.base_url}
+                disabled
+                className="mt-1 block w-full border rounded-md px-3 py-2 bg-gray-100 text-gray-500 cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-400 mt-1">Base URL cannot be changed after creation</p>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Save Changes
+              </button>
+              <button type="button" onClick={() => { setEditTarget(null); resetForm(); }} className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">
                 Cancel
               </button>
             </div>
@@ -150,7 +217,13 @@ export default function Targets() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-500">{new Date(target.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-2">
+                    <button
+                      onClick={() => openEdit(target)}
+                      className="text-blue-500 hover:underline text-sm"
+                    >
+                      Edit
+                    </button>
                     <button
                       onClick={() => setDeleteId(target.id)}
                       className="text-red-500 hover:underline text-sm"
