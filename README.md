@@ -170,16 +170,72 @@ reporting, and a React dashboard.
 
 ## Running the Backend Locally
 
+> **Python 3.13 is required.** Python 3.14 has compatibility issues with
+> dependencies such as asyncpg. Use 3.13 until further notice.
+
+**Linux/macOS:**
+
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3.13 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp ../.env.example ../.env   # adjust as needed
 uvicorn app.main:app --reload
 ```
 
+**Windows (PowerShell):**
+
+```powershell
+cd backend
+py -3.13 -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item ..\.env.example ..\.env   # adjust as needed
+uvicorn app.main:app --reload
+```
+
 Then visit `http://localhost:8000/api/health` and
 `http://localhost:8000/docs` (interactive OpenAPI docs).
+
+## Running the Frontend Locally
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Opens at `http://localhost:5173`. The Vite dev server proxies `/api`
+requests to the backend at `http://localhost:8000`, so the backend
+must be running first.
+
+## Full Local Setup (Both)
+
+Run these in **two separate terminals**:
+
+**Terminal 1 — Backend:**
+
+```bash
+cd backend
+python3.13 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp ../.env.example ../.env
+uvicorn app.main:app --reload
+```
+
+**Terminal 2 — Frontend:**
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+| Service   | URL                        |
+|-----------|----------------------------|
+| Backend   | `http://localhost:8000`     |
+| Frontend  | `http://localhost:5173`     |
+| API Docs  | `http://localhost:8000/docs`|
 
 ## Database Setup
 
@@ -227,7 +283,16 @@ pytest -v
 docker compose up --build
 ```
 
-This starts a Postgres database and the backend API on port 8000.
+This starts:
+
+| Service  | URL                  | Description          |
+|----------|----------------------|----------------------|
+| Frontend | `http://localhost:80`| React dashboard      |
+| Backend  | `http://localhost:8000` | FastAPI API        |
+| Database | `localhost:5432`     | PostgreSQL           |
+
+Before running, copy `.env.example` to `.env` and update
+`POSTGRES_PASSWORD` and `SECRET_KEY` for production use.
 
 ## Configuration
 
