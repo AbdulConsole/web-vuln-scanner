@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { api, Finding, FindingDetail } from '../api';
 import { SeverityBadge, StatusBadge } from '../components/Badges';
 import { ScoreBar } from '../components/Badges';
+import Spinner from '../components/Spinner';
+import EmptyState from '../components/EmptyState';
+import { useToast } from '../components/Toast';
 
 export default function Findings() {
   const [findings, setFindings] = useState<Finding[]>([]);
@@ -9,6 +12,7 @@ export default function Findings() {
   const [severityFilter, setSeverityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedFinding, setSelectedFinding] = useState<FindingDetail | null>(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     loadFindings();
@@ -17,7 +21,6 @@ export default function Findings() {
   const loadFindings = async () => {
     setLoading(true);
     try {
-      // Load all scans first to get finding data.
       const scansResp = await api.listScans();
       const allFindings: Finding[] = [];
       for (const scan of scansResp.items) {
@@ -47,14 +50,15 @@ export default function Findings() {
   const handleStatusChange = async (id: string, status: string) => {
     try {
       await api.updateFindingStatus(id, status);
+      addToast(`Status updated to ${status.replace('_', ' ')}`, 'success');
       loadFindings();
       setSelectedFinding(null);
     } catch (e: any) {
-      alert(e.message);
+      addToast(e.message || 'Failed to update status', 'error');
     }
   };
 
-  if (loading && findings.length === 0) return <div className="text-center py-8 text-gray-500">Loading...</div>;
+  if (loading && findings.length === 0) return <Spinner />;
 
   return (
     <div>
@@ -88,49 +92,60 @@ export default function Findings() {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left">Rank</th>
-              <th className="px-4 py-3 text-left">Severity</th>
-              <th className="px-4 py-3 text-left">Title</th>
-              <th className="px-4 py-3 text-left">URL</th>
-              <th className="px-4 py-3 text-left">Risk Score</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {findings.map(f => (
-              <tr key={f.id} className="border-t hover:bg-gray-50">
-                <td className="px-4 py-2">{f.priority_rank || '-'}</td>
-                <td className="px-4 py-2"><SeverityBadge severity={f.severity} /></td>
-                <td className="px-4 py-2 font-medium">{f.title}</td>
-                <td className="px-4 py-2 text-gray-600 max-w-xs truncate">{f.url}</td>
-                <td className="px-4 py-2">
-                  <ScoreBar score={f.risk_score || 0} />
-                </td>
-                <td className="px-4 py-2"><StatusBadge status={f.status} /></td>
-                <td className="px-4 py-2 text-right">
-                  <button
-                    onClick={() => handleViewDetail(f.id)}
-                    className="text-blue-500 hover:underline"
-                  >
-                    Details
-                  </button>
-                </td>
+        {findings.length === 0 && !loading ? (
+          <EmptyState
+            icon="🛡️"
+            title="No findings"
+            description={severityFilter || statusFilter ? 'Try adjusting your filters' : 'Run a scan to discover vulnerabilities'}
+          />
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left">Rank</th>
+                <th className="px-4 py-3 text-left">Severity</th>
+                <th className="px-4 py-3 text-left">Title</th>
+                <th className="px-4 py-3 text-left">URL</th>
+                <th className="px-4 py-3 text-left">Risk Score</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
-            ))}
-            {findings.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No findings</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {findings.map(f => (
+                <tr key={f.id} className="border-t hover:bg-gray-50">
+                  <td className="px-4 py-2">{f.priority_rank || '-'}</td>
+                  <td className="px-4 py-2"><SeverityBadge severity={f.severity} /></td>
+                  <td className="px-4 py-2 font-medium">{f.title}</td>
+                  <td className="px-4 py-2 text-gray-600 max-w-xs truncate">{f.url}</td>
+                  <td className="px-4 py-2">
+                    <ScoreBar score={f.risk_score || 0} />
+                  </td>
+                  <td className="px-4 py-2"><StatusBadge status={f.status} /></td>
+                  <td className="px-4 py-2 text-right">
+                    <button
+                      onClick={() => handleViewDetail(f.id)}
+                      className="text-blue-500 hover:underline"
+                    >
+                      Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {selectedFinding && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => setSelectedFinding(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h2 className="text-lg font-semibold">{selectedFinding.title}</h2>
               <button onClick={() => setSelectedFinding(null)} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>

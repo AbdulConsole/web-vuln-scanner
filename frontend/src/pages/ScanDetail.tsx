@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { api, Scan, Finding, Report } from '../api';
 import { StatusBadge, SeverityBadge } from '../components/Badges';
 import { RiskBandBadge, ScoreBar } from '../components/Badges';
+import Spinner from '../components/Spinner';
+import { useToast } from '../components/Toast';
 
 export default function ScanDetail() {
   const { id } = useParams<{ id: string }>();
@@ -10,6 +12,7 @@ export default function ScanDetail() {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -36,14 +39,15 @@ export default function ScanDetail() {
     if (!id) return;
     try {
       await api.createReport(id, format);
+      addToast(`${format.toUpperCase()} report generated`, 'success');
       const r = await api.listScanReports(id);
       setReports(r.items);
     } catch (e: any) {
-      alert(e.message || 'Failed to generate report');
+      addToast(e.message || 'Failed to generate report', 'error');
     }
   };
 
-  if (loading) return <div className="text-center py-8 text-gray-500">Loading...</div>;
+  if (loading) return <Spinner />;
   if (!scan) return <div className="text-center py-8 text-red-500">Scan not found</div>;
 
   return (

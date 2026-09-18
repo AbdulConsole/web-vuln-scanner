@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, Target, Scan, Finding } from '../api';
-import { StatusBadge } from '../components/Badges';
+import { StatusBadge, SeverityCard } from '../components/Badges';
+import Spinner from '../components/Spinner';
+import EmptyState from '../components/EmptyState';
 
 export default function Dashboard() {
   const [targets, setTargets] = useState<Target[]>([]);
@@ -16,7 +18,6 @@ export default function Dashboard() {
         setTargets(t);
         setScans(s.items);
 
-        // Fetch findings from all completed scans.
         const completedScans = s.items.filter((scan: Scan) => scan.status === 'completed');
         const findingsResults = await Promise.all(
           completedScans.map((scan: Scan) =>
@@ -34,15 +35,23 @@ export default function Dashboard() {
     load();
   }, []);
 
-  if (loading) return <div className="text-center py-8 text-gray-500">Loading...</div>;
+  if (loading) return <Spinner />;
 
   const recentScans = scans.slice(0, 5);
+  const severityCounts = findings.reduce(
+    (acc, f) => {
+      acc[f.severity] = (acc[f.severity] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+  const severityOrder = ['critical', 'high', 'medium', 'low', 'informational'];
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
           <div className="text-3xl font-bold text-blue-600">{targets.length}</div>
           <div className="text-gray-500">Targets</div>
@@ -63,11 +72,19 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {findings.length > 0 && (
+        <div className="grid grid-cols-5 gap-3 mb-8">
+          {severityOrder.map(sev => (
+            <SeverityCard key={sev} severity={sev} count={severityCounts[sev] || 0} />
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-4">
           <h2 className="text-lg font-semibold mb-4">Recent Scans</h2>
           {recentScans.length === 0 ? (
-            <p className="text-gray-400">No scans yet</p>
+            <EmptyState icon="🔍" title="No scans yet" description="Create a target and start your first scan" />
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -95,7 +112,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg shadow p-4">
           <h2 className="text-lg font-semibold mb-4">Targets</h2>
           {targets.length === 0 ? (
-            <p className="text-gray-400">No targets configured</p>
+            <EmptyState icon="🎯" title="No targets configured" description="Add a target URL to begin scanning" />
           ) : (
             <ul className="space-y-2">
               {targets.map(target => (
