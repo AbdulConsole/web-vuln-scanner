@@ -65,6 +65,14 @@ SENSITIVE_PATH_SIGNATURES: dict[str, tuple[list[str], str]] = {
     "/phpinfo.php": (["PHP Version", "phpinfo()"], "Exposed phpinfo() page"),
     "/.svn/entries": (["dir"], "Exposed Subversion entries file"),
     "/web.config": (["<configuration>"], "Exposed IIS web.config file"),
+    # Common vulnerable-app / misconfigured-server paths
+    "/encryptionkeys/jwt.pub": (
+        ["BEGIN RSA PUBLIC KEY", "BEGIN PUBLIC KEY"],
+        "Exposed JWT public key",
+    ),
+    "/encryptionkeys/premium.key": (["."], "Exposed symmetric key file"),
+    "/ftp": (["<title>Index of", "ftp"], "Exposed FTP/web directory listing"),
+    "/.well-known/security.txt": (["Contact:", "Encryption:"], "Exposed security.txt disclosure"),
 }
 
 # Field-name substrings (checked case-insensitively) recognized as

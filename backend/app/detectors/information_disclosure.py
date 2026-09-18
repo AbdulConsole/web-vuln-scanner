@@ -45,10 +45,22 @@ class InformationDisclosureDetector(BaseDetector):
         for path, (signatures, title) in SENSITIVE_PATH_SIGNATURES.items():
             url = base_url + path
             response = await context.engine.get(url)
-            if not response.ok or response.status_code != 200 or not response.text:
+            if not response.ok or response.status_code != 200:
                 continue
 
-            matched = [s for s in signatures if s.lower() in response.text.lower()]
+            # Try decoded text first; fall back to raw bytes for files
+            # served with non-standard content types (e.g. PEM keys
+            # served as application/x-mspublisher).
+            body = response.text
+            if body is None and response.body_bytes:
+                try:
+                    body = response.body_bytes.decode("utf-8", errors="replace")
+                except Exception:
+                    continue
+            if not body:
+                continue
+
+            matched = [s for s in signatures if s.lower() in body.lower()]
             if not matched:
                 continue  # 200 status alone isn't enough evidence
 

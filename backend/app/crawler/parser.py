@@ -7,6 +7,7 @@ this structured surface, not against re-parsed pages.
 """
 from __future__ import annotations
 
+import re
 from urllib.parse import parse_qsl, urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -120,3 +121,29 @@ def extract_form_parameters(form: DiscoveredForm) -> list[DiscoveredParameter]:
         )
 
     return parameters
+
+
+# Matches URL-like path strings in JavaScript source code:
+# "/api/Products", "/rest/user/login", "/ftp/.git/config", etc.
+_JS_PATH_RE = re.compile(
+    r"""(?:"|')(/(?:api|rest|ftp|websocket|socket|graphql|v[0-9]+|assets)/[A-Za-z0-9/_.\-]+?)(?:"|')""",
+)
+
+
+def extract_api_paths_from_js(js_text: str, base_url: str) -> list[str]:
+    """Scan JavaScript source for API/REST-like path strings and return
+    them as absolute URLs rooted at the target's base.
+
+    This helps discover SPA API endpoints that aren't visible in HTML
+    <a href> or <form> tags — critical for single-page applications like
+    OWASP Juice Shop where all routing is handled client-side.
+    """
+    seen: set[str] = set()
+    paths: list[str] = []
+    for match in _JS_PATH_RE.finditer(js_text):
+        path = match.group(1)
+        absolute = urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
+        if absolute not in seen:
+            seen.add(absolute)
+            paths.append(absolute)
+    return paths

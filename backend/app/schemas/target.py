@@ -48,6 +48,10 @@ class ScanConfig(BaseModel):
     # detector registry at scan-start time (Milestone 6), not here, since
     # the registry doesn't exist yet in this milestone.
     enabled_detectors: list[str] = Field(default_factory=list)
+    # Additional URLs to probe beyond what the HTML crawler discovers.
+    # Essential for SPAs (Angular, React, Vue) where routes are handled
+    # client-side and not visible as <a href> links in the initial HTML.
+    seed_urls: list[str] = Field(default_factory=list)
 
     @field_validator("concurrency")
     @classmethod

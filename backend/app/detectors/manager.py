@@ -132,7 +132,7 @@ class DetectorManager:
         manager = cls()
         detector_configs = detector_configs or {}
         for name, detector_cls in _REGISTRY.items():
-            if enabled is not None and name not in enabled:
+            if enabled is not None and len(enabled) > 0 and name not in enabled:
                 continue
             instance = detector_cls(engine, config=detector_configs.get(name))
             manager.register_instance(instance)

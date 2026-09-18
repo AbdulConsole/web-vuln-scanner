@@ -44,6 +44,14 @@ DEFAULT_USER_AGENT = "VulnScanner/0.1 (+authorized-security-testing)"
 # text, and decoding a 50MB binary wastes memory for no benefit.
 _TEXTUAL_CONTENT_HINTS = ("html", "text", "json", "xml", "javascript")
 
+# Known binary content types that must never be decoded as text, even if
+# the response is small (e.g. a 6-byte PNG placeholder).
+_BINARY_CONTENT_HINTS = (
+    "image/", "font/", "audio/", "video/", "application/pdf",
+    "application/zip", "application/gzip", "application/x-tar",
+    "application/x-font", "image/svg+xml",
+)
+
 
 @dataclass(frozen=True)
 class RequestSpec:
@@ -339,9 +347,29 @@ class RequestEngine:
         self, response: httpx.Response, raw: bytes, content_type: str | None
     ) -> str | None:
         if not content_type:
+            # No content type — try decoding small responses as text,
+            # since many APIs/files omit the header entirely.
+            if len(raw) <= 10_000:
+                try:
+                    return raw.decode("utf-8", errors="replace")
+                except (LookupError, TypeError):
+                    return raw.decode("utf-8", errors="replace")
             return None
+
         lowered = content_type.lower()
+
+        # Never attempt to decode known binary types as text.
+        if any(hint in lowered for hint in _BINARY_CONTENT_HINTS):
+            return None
+
         if not any(hint in lowered for hint in _TEXTUAL_CONTENT_HINTS):
+            # Non-standard content type — try decoding small responses
+            # (e.g. PEM keys served as application/x-mspublisher).
+            if len(raw) <= 10_000:
+                try:
+                    return raw.decode("utf-8", errors="replace")
+                except (LookupError, TypeError):
+                    pass
             return None
 
         # KNOWN LIMITATION (carried over from Milestone 4, unchanged): httpx

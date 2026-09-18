@@ -26,6 +26,7 @@ from app.core.logging import get_logger
 from app.core.security import ScopeGuard
 from app.crawler.models import CrawledUrl, CrawlSummary, DiscoveredParameter
 from app.crawler.parser import (
+    extract_api_paths_from_js,
     extract_form_parameters,
     extract_forms,
     extract_links,
@@ -67,6 +68,7 @@ class Crawler:
         self.rate_limit: float = scan_config.get("request_rate", 5.0)
         self.concurrency: int = scan_config.get("concurrency", 5)
         self.respect_robots_txt: bool = scan_config.get("respect_robots_txt", True)
+        self._extra_seed_urls: list[str] = scan_config.get("seed_urls", [])
 
         self.url_manager = UrlManager(
             max_depth=self.max_depth,
@@ -105,6 +107,13 @@ class Crawler:
         self, cancellation_token: asyncio.Event | None = None
     ) -> CrawlSummary:
         self.url_manager.seed(self.base_url)
+
+        # Seed any additional URLs from scan config (essential for SPAs
+        # where the HTML crawler can't discover client-side routes).
+        from urllib.parse import urljoin
+        for extra_url in self._extra_seed_urls:
+            absolute = urljoin(self.base_url, extra_url)
+            self.url_manager.enqueue_discovered(absolute, depth=0, source_url=self.base_url)
 
         results: list[CrawledUrl] = []
         errors: list[str] = []
@@ -185,6 +194,9 @@ class Crawler:
             forms = extract_forms(response.text, effective_base)
             for form in forms:
                 parameters.extend(extract_form_parameters(form))
+        elif response.text and response.content_type and "javascript" in response.content_type:
+            effective_base = response.final_url or item.url
+            discovered_links = extract_api_paths_from_js(response.text, effective_base)
 
         crawled = CrawledUrl(
             url=response.final_url or item.url,
