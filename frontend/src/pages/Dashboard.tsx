@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, Target, Scan, Finding } from '../api';
-import { SeverityCard, StatusBadge } from '../components/Badges';
+import { StatusBadge } from '../components/Badges';
 
 export default function Dashboard() {
   const [targets, setTargets] = useState<Target[]>([]);
@@ -15,6 +15,16 @@ export default function Dashboard() {
         const [t, s] = await Promise.all([api.listTargets(), api.listScans()]);
         setTargets(t);
         setScans(s.items);
+
+        // Fetch findings from all completed scans.
+        const completedScans = s.items.filter((scan: Scan) => scan.status === 'completed');
+        const findingsResults = await Promise.all(
+          completedScans.map((scan: Scan) =>
+            api.listScanFindings(scan.id).catch(() => ({ items: [], total: 0 }))
+          )
+        );
+        const allFindings = findingsResults.flatMap((r) => r.items);
+        setFindings(allFindings);
       } catch (e) {
         console.error(e);
       } finally {
@@ -25,11 +35,6 @@ export default function Dashboard() {
   }, []);
 
   if (loading) return <div className="text-center py-8 text-gray-500">Loading...</div>;
-
-  const severityCounts = findings.reduce((acc, f) => {
-    acc[f.severity] = (acc[f.severity] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
 
   const recentScans = scans.slice(0, 5);
 

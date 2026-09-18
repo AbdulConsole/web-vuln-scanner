@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, Finding, FindingDetail } from '../api';
 import { SeverityBadge, StatusBadge } from '../components/Badges';
-import { ScoreBar, RiskBandBadge } from '../components/Badges';
+import { ScoreBar } from '../components/Badges';
 
 export default function Findings() {
   const [findings, setFindings] = useState<Finding[]>([]);
