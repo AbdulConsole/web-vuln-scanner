@@ -85,7 +85,9 @@ class ReportGenerator:
                 HTML(filename=temp_html).write_pdf(storage_path)
             except ImportError:
                 logger.warning("weasyprint not installed, falling back to HTML report")
-                os.rename(temp_html, storage_path.replace(".pdf", ".html"))
+                fallback_path = storage_path.replace(".pdf", ".html")
+                os.rename(temp_html, fallback_path)
+                storage_path = fallback_path
                 report_format = ReportFormat.HTML
             finally:
                 if os.path.exists(temp_html):
@@ -168,7 +170,7 @@ class ReportGenerator:
                 <td>{f.title}</td>
                 <td>{f.url}</td>
                 <td>{f.parameter or '-'}</td>
-                <td>{f.risk_score:.1f if f.risk_score else '-'}</td>
+                <td>{f'{f.risk_score:.1f}' if f.risk_score else '-'}</td>
                 <td>{risk_band}</td>
                 <td>{f.detector_name}</td>
                 <td><span class="badge badge-{status_val}">{status_val}</span></td>
